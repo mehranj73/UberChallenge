@@ -1,0 +1,34 @@
+from django.db import models
+
+
+
+class Trip(models.Model):
+    from_user = models.ForeignKey(
+        'accounts.User',
+        on_delete = models.CASCADE,
+        blank=True,
+        null=True,
+        related_name="customer"
+    )
+
+    driver = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.CASCADE,
+        blank=True,
+        null=True,
+        related_name="driver"
+    )
+    pickup_address = models.CharField(
+        max_length=60,
+        blank=True,
+        default="BASIC PICK UP ADDRESS"
+    )
+
+    dropoff_address =models.CharField(
+        max_length=60,
+        blank=True,
+        default="BASIC DROP OFF ADDRESS"
+    )
+
+    def __str__(self):
+        return f"{self.from_user.username} requested a trip from {self.pickup_address} to {self.dropoff_address}"
