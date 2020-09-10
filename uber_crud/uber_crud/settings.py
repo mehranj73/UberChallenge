@@ -33,6 +33,8 @@ INSTALLED_APPS = [
 
     #Third ...,
     'rest_framework',
+    'channels',
+
 
 
 ]
@@ -66,6 +68,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'uber_crud.wsgi.application'
+ASGI_APPLICATION = "uber_crud.routing.application"
 
 
 # Database
@@ -100,6 +103,7 @@ SIMPLE_JWT = {
     'ALGORITHM': 'HS256',
     'SIGNING_KEY': SECRET_KEY
 }
+
 
 
 # Password validation
