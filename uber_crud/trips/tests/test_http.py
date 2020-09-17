@@ -60,6 +60,7 @@ class TripTests(APITestCase):
         trip_id = trip.id
         url = reverse("trip_detail", args=[trip_id])
         response = self.client.get(url, HTTP_AUTHORIZATION='Bearer '+ self.access)
+        print(response.data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["id"], trip.id)
         self.assertEqual(response.data["pickup_address"], trip.pickup_address)
