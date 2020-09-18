@@ -69,8 +69,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'uber_crud.wsgi.application'
-ASGI_APPLICATION = "uber_crud.routing.application"
-
+ASGI_APPLICATION = "routing.application"
 
 # Database
 # https://docs.djangoproject.com/en/3.1/ref/settings/#databases
