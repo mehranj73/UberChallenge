@@ -24,8 +24,8 @@ CHANNEL_LAYERS = {
     # 4 ) can_broadcast_message_to_server : DONE
     # 5 ) can_receive_broadcasted_message_from_server : DONE
     # 6 ) test_can_join_driver_group : DONE
-    # 6 ) test_can_join_customer_group : TODO <-
-    # 7 ) test_can_create_trips : TODO
+    # 6 ) test_can_join_rider_group : DONE
+    # 7 ) test_can_create_trips : TODO <-
 
 PASSWORD = "passw0rd!"
 
@@ -38,14 +38,15 @@ def create_user(
     ):
     user = User.objects.create_user(username=username, password=password, first_name=first_name)
     if group:
-        driver_group, created = Group.objects.get_or_create(name="driver")
+        driver_group, created = Group.objects.get_or_create(name=group)
         driver_group.user_set.add(user)
         print(Group.objects.all())
     return user
 
 
+
 @pytest.mark.asyncio
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 class TestWebsocket:
 
     async def test_can_connect_to_server(self, settings):
@@ -120,4 +121,61 @@ class TestWebsocket:
         await channel_layer.group_send("driver", message)
         response = await communicator.receive_json_from()
         assert message["data"] == response["data"]
+        print(response["data"])
         await communicator.disconnect()
+
+    async def test_can_join_rider_group_on_create(self, settings):
+        settings.CHANNEL_LAYERS = CHANNEL_LAYERS
+        channel_layer = get_channel_layer()
+        print("creating rider ")
+        rider = await database_sync_to_async(create_user)(username="test_2", group="rider")
+        access = AccessToken.for_user(rider)
+        communicator = WebsocketCommunicator(
+            application=application,
+            path=f"/trips/?{access}"
+        )
+        connected, _ = await communicator.connect()
+        message = {
+            "type" : "echo.message",
+            "data" : f"{rider.username} just joined the rider group"
+        }
+        await channel_layer.group_send("rider", message)
+        response = await communicator.receive_json_from()
+        assert message["data"] == response["data"]
+        print(response["data"])
+        await communicator.disconnect()
+
+    async def test_rider_can_create_trip_and_driver_can_listen(self, settings):
+        settings.CHANNEL_LAYERS = CHANNEL_LAYERS
+        channel_layer = get_channel_layer()
+        print("creating trip ... ")
+        rider = await database_sync_to_async(create_user)(username="test_rider", group="rider")
+        driver = await database_sync_to_async(create_user)(username="test_driver", group="driver")
+        access = AccessToken.for_user(rider)
+        communicator = WebsocketCommunicator(
+            application=application,
+            path=f"/trips/?{access}"
+        )
+
+        message ={
+            "type" : "create.trip",
+            "data" : {
+                "from_user" : rider.id,
+                "driver" : None,
+                "pickup_address" : "SOME PIC UP ADDRESS",
+                "dropoff_address" : "SOME FROP OFF ADDRESS"
+            }
+        }
+        #Send message
+        await communicator.send_json_to(message)
+        response = await communicator.receive_json_from()
+        assert response["data"]["from_user"] == message["data"]["from_user"]
+        assert response["data"]["pickup_address"] == message["data"]["pickup_address"]
+        assert response["data"]["dropoff_address"] == message["data"]["dropoff_address"]
+        message_driver = {
+            "type" : "echo.message",
+            "data" : "GET PREPARED TO PICK UP SOMEONE ! "
+        }
+        await self.channel_layer.group_send("driver", message_driver)
+        response = await communicator.receive_json_from()
+        assert response["data"] == message_driver["data"]
