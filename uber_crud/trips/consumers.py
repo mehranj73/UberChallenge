@@ -4,7 +4,8 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.tokens import AccessToken
 from channels.db import database_sync_to_async #Db interraction inside async code
 from django.contrib.auth.models import AnonymousUser
-from .models import Trips
+from .models import Trip
+from  .serializers import TripSerializer
 
 async def get_user(access=None):
     '''
@@ -23,9 +24,12 @@ async def get_user(access=None):
     return user
 
 
-async def create_trip(from_user,driver,pickup_address,dropoff_address):
-    trip = await database_sync_to_async(Trips.objects.create)(from_user, driver, pickup_address, dropoff_address)
-    trip.save()
+async def create_trip(trip_data):
+    #Serializing data
+    serializer = await database_sync_to_async(TripSerializer)(data=trip_data)
+    await database_sync_to_async(serializer.is_valid)(raise_exception=True)
+    #user are ids here
+    trip = await database_sync_to_async(serializer.create)(validated_data=serializer.validated_data)
     return trip
 
 
@@ -73,19 +77,12 @@ class TripConsumer(AsyncJsonWebsocketConsumer):
 
     async def _create_trip(self, message):
         try :
-            trip = await create_trip(**message["data"])
-            await self.channel_layer.group_send(
-                "driver",
-                {
-                    "type" : "echo.message",
-                    "data" : f"Ready to pick up {trip.from_user.first_name} ?"
-                }
-            )
+            trip = await create_trip(message["data"])
             await self._trip_success({
                 "type" : "trip.success",
                 "data" : {
-                    "from_user" : trip.from_user.first_name,
-                    "rider" : trip.rider.first_name,
+                    "from_user" : trip.from_user.id,
+                    "driver" : trip.driver,
                     "pickup_address" : trip.pickup_address,
                     "dropoff_address" : trip.dropoff_address
                 }
@@ -94,7 +91,7 @@ class TripConsumer(AsyncJsonWebsocketConsumer):
             print(e)
             await self._trip_fail({
                 "type" : "trip.fail",
-                "data" : e
+                "data" : "Something went wrong "
             })
 
     async def receive_json(self, content):

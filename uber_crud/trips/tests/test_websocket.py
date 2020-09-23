@@ -25,7 +25,10 @@ CHANNEL_LAYERS = {
     # 5 ) can_receive_broadcasted_message_from_server : DONE
     # 6 ) test_can_join_driver_group : DONE
     # 6 ) test_can_join_rider_group : DONE
-    # 7 ) test_can_create_trips : TODO <-
+    # 7 ) test_can_create_trips : DONE
+    # 8 ) test_can_broadcast_trips : TODO <-
+    # 9 ) test_can_join_accept_trips : TODO
+    # 10 ) test_can_join_trip_group_on_connect : TODO
 
 PASSWORD = "passw0rd!"
 
@@ -40,7 +43,6 @@ def create_user(
     if group:
         driver_group, created = Group.objects.get_or_create(name=group)
         driver_group.user_set.add(user)
-        print(Group.objects.all())
     return user
 
 
@@ -163,7 +165,7 @@ class TestWebsocket:
                 "from_user" : rider.id,
                 "driver" : None,
                 "pickup_address" : "SOME PIC UP ADDRESS",
-                "dropoff_address" : "SOME FROP OFF ADDRESS"
+                "dropoff_address" : "SOME DROP OFF ADDRESS"
             }
         }
         #Send message
@@ -172,10 +174,3 @@ class TestWebsocket:
         assert response["data"]["from_user"] == message["data"]["from_user"]
         assert response["data"]["pickup_address"] == message["data"]["pickup_address"]
         assert response["data"]["dropoff_address"] == message["data"]["dropoff_address"]
-        message_driver = {
-            "type" : "echo.message",
-            "data" : "GET PREPARED TO PICK UP SOMEONE ! "
-        }
-        await self.channel_layer.group_send("driver", message_driver)
-        response = await communicator.receive_json_from()
-        assert response["data"] == message_driver["data"]
