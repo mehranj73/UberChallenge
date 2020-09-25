@@ -26,9 +26,10 @@ CHANNEL_LAYERS = {
     # 6 ) test_can_join_driver_group : DONE
     # 6 ) test_can_join_rider_group : DONE
     # 7 ) test_can_create_trips : DONE
-    # 8 ) test_can_broadcast_trips : TODO <-
-    # 9 ) test_can_join_accept_trips : TODO
-    # 10 ) test_can_join_trip_group_on_connect : TODO
+    # 8 ) test_can_broadcast_trips : DONE
+    # 9 ) test_can_join_trip_group : TODO <-
+    # 10 ) test_driver_can_accept_trip : TODO
+    # 11 ) test_driver_can_join_trip_group : TODO
 
 PASSWORD = "passw0rd!"
 
@@ -147,7 +148,7 @@ class TestWebsocket:
         print(response["data"])
         await communicator.disconnect()
 
-    async def test_rider_can_create_trip_and_driver_can_listen(self, settings):
+    async def test_rider_can_create_trip(self, settings):
         settings.CHANNEL_LAYERS = CHANNEL_LAYERS
         channel_layer = get_channel_layer()
         print("creating trip ... ")
@@ -158,7 +159,7 @@ class TestWebsocket:
             application=application,
             path=f"/trips/?{access}"
         )
-
+        connected, _ = await communicator.connect()
         message ={
             "type" : "create.trip",
             "data" : {
@@ -174,3 +175,36 @@ class TestWebsocket:
         assert response["data"]["from_user"] == message["data"]["from_user"]
         assert response["data"]["pickup_address"] == message["data"]["pickup_address"]
         assert response["data"]["dropoff_address"] == message["data"]["dropoff_address"]
+        await communicator.disconnect()
+
+    async def test_can_broadcast_trips(self, settings):
+        settings.CHANNEL_LAYERS = CHANNEL_LAYERS
+        channel_layer = get_channel_layer()
+        print("creating trip ... ")
+        driver = await database_sync_to_async(create_user)(username="test_driver", group="driver")
+        access = AccessToken.for_user(driver)
+        await channel_layer.group_add("driver", "channel1")
+        communicator = WebsocketCommunicator(
+         application=application,
+         path=f"/trips/?{access}"
+        )
+        connected, _ = await communicator.connect()
+        message ={
+         "type" : "create.trip",
+         "data" : {
+             "from_user" : None,
+             "driver" : None,
+             "pickup_address" : "SOME PIC UP ADDRESS",
+             "dropoff_address" : "SOME DROP OFF ADDRESS"
+         }
+        }
+        await communicator.send_json_to(message)
+        response = await channel_layer.receive("channel1")
+        assert response["data"]["from_user"] == message["data"]["from_user"]
+        assert response["data"]["pickup_address"] == message["data"]["pickup_address"]
+        assert response["data"]["dropoff_address"] == message["data"]["dropoff_address"]
+        await communicator.disconnect()
+         #create trip
+         #broadcast to driver
+         #check if driver received it
+         #yes

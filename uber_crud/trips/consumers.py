@@ -46,6 +46,7 @@ class TripConsumer(AsyncJsonWebsocketConsumer):
         access = self.scope["query_string"].decode("utf-8")
         self.user = await get_user(access=access)
         self.user_group = await database_sync_to_async(self.user.groups.first)()
+        print(f"In group : {self.user_group} \n")
         print(f"given user : {self.user}\n")
         if self.user_group and self.user_group.name == "driver":
             await self.channel_layer.group_add(
@@ -80,13 +81,13 @@ class TripConsumer(AsyncJsonWebsocketConsumer):
             trip = await create_trip(message["data"])
             await self._trip_success({
                 "type" : "trip.success",
-                "data" : {
-                    "from_user" : trip.from_user.id,
-                    "driver" : trip.driver,
-                    "pickup_address" : trip.pickup_address,
-                    "dropoff_address" : trip.dropoff_address
-                }
+                "data" : message["data"]
             })
+            await self.channel_layer.group_send("driver", {
+                "type" : "echo.message",
+                "data" : message["data"]
+            })
+
         except Exception as e:
             print(e)
             await self._trip_fail({
@@ -95,7 +96,6 @@ class TripConsumer(AsyncJsonWebsocketConsumer):
             })
 
     async def receive_json(self, content):
-        #Extracting the type
         type = content["type"]
         print(f"reecived type : {type} \n")
         if type == "echo.message":
