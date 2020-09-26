@@ -245,7 +245,44 @@ class TestWebsocket:
             "type" : "echo.message",
             "data" : "You have been added to the trip group !"
         }
-        await channel_layer.group_send(f"{trip_id}",message)
+        await channel_layer.group_send(f"trip_{trip_id}",message)
         response = await communicator.receive_json_from()
         assert response["data"] == response["data"]
         await communicator.disconnect()
+
+    async def test_driver_can_accept_trip(self, settings):
+
+        settings.CHANNEL_LAYERS = CHANNEL_LAYERS
+        channel_layer = get_channel_layer()
+        print("creating trip ... ")
+        rider = await database_sync_to_async(create_user)(username="test_rider", group="rider")
+        access = AccessToken.for_user(rider)
+        communicator = WebsocketCommunicator(
+         application=application,
+         path=f"/trips/?{access}"
+        )
+        message = {
+            "type" : "create.trip",
+            "data" : {
+                "from_user" : rider.id,
+                "driver": None,
+                "pickup_address" : "PICK UP A ",
+                "dropoff_address" : "PICK UP B"
+            }
+        }
+        driver = await database_sync_to_async(create_user)(username="test_driver", group="driver")
+        await communicator.send_json_to(message)
+        response = await communicator.receive_json_from()
+        print(response["data"])
+        print("WE HAVE NO DRIVER ! ")
+        driver_message = {
+            "type" : "accept.trip",
+            "data" : {
+                "trip_id" : response["data"]["id"],
+                "driver" : driver.id
+            }
+        }
+        await communicator.send_json_to(driver_message)
+        response = await communicator.receive_json_from()
+        print(response)
+        assert response["data"]["driver"] == driver_message["data"]["driver"]

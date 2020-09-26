@@ -67,6 +67,25 @@ class TripConsumer(AsyncJsonWebsocketConsumer):
             "data" : message["data"]
         })
 
+    async def _accept_trip(self, message):
+        trip_id, driver_id = message["data"]["trip_id"],message["data"]["driver"]
+        trip = await database_sync_to_async(Trip.objects.get)(id=trip_id)
+        #TODO : WRITE FUNCTION TO UPDATE !
+        serializer = await database_sync_to_async(TripSerializer)(trip, data={
+            "driver" : driver_id
+        }, partial=True)
+        await database_sync_to_async(serializer.is_valid)(raise_exception=True)
+        updated_trip = await database_sync_to_async(serializer.save)()
+        #END TODO
+        serialized_updated_trip = await get_serialized_trip(updated_trip)
+        await self.channel_layer.group_add(f"trip_{trip.id}", self.channel_name)
+        print("Successfully accepted the trip")
+        await self.echo_message({
+            "type" : "echo.message",
+            "data" : serialized_updated_trip
+        })
+
+
     async def _trip_success(self, message):
         print("Successfull trip creation ! ")
         await self.echo_message(message)
@@ -85,7 +104,7 @@ class TripConsumer(AsyncJsonWebsocketConsumer):
                 "data" : serialized_trip
             })
             #Adding current channel to the trip group : (rider side)
-            await self.channel_layer.group_add(f"{trip.id}", self.channel_name)
+            await self.channel_layer.group_add(f"trip_{trip.id}", self.channel_name)
             await self.channel_layer.group_send("driver", {
                 "type" : "echo.message",
                 "data" : message["data"]
@@ -105,6 +124,8 @@ class TripConsumer(AsyncJsonWebsocketConsumer):
             await self.echo_message(content)
         elif type == "create.trip":
             await self._create_trip(content)
+        elif type == "accept.trip":
+            await self._accept_trip(content)
 
     #If you want to customise the JSON encoding and decoding, you can override the encode_json and decode_json classmethods.
 
