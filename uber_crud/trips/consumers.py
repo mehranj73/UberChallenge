@@ -31,16 +31,25 @@ async def create_trip(trip_data):
     #user are ids here
     trip = await database_sync_to_async(serializer.create)(validated_data=serializer.validated_data)
     #return trip and serialized_trip
+    print(trip.id)
     return trip
 
 async def get_serialized_trip(trip_obj):
     serializer = await database_sync_to_async(TripSerializer)(trip_obj)
     return serializer.data
 
+@database_sync_to_async
+def get_all_trips_id(user_id, group):
+    if group == "rider":
+        trips = Trip.objects.filter(from_user=user_id)
+    elif group == "driver":
+        trips = Trip.objects.filter(driver=user_id)
+    return [trip.id for trip in trips]
+
 
 class TripConsumer(AsyncJsonWebsocketConsumer):
 
-    async def connect(self): # changed
+    async def connect(self):
         #TODO : REMOVE TEST GROUP
         await self.channel_layer.group_add(
             group='test',
@@ -49,6 +58,16 @@ class TripConsumer(AsyncJsonWebsocketConsumer):
         access = self.scope["query_string"].decode("utf-8")
         self.user = await get_user(access=access)
         self.user_group = await database_sync_to_async(self.user.groups.first)()
+        print("LOOK AT MY GROUP LOOOL ! ")
+        print(self.user_group)
+        #TODO : GET ALL RELATED TRIPS FOR A USER
+        if self.user_group:
+            self.all_user_trips_id = await get_all_trips_id(self.user.id, self.user_group.name)
+            if self.all_user_trips_id:
+                print("WE GOT ALL THE TRIPS ID ! ")
+                print(self.all_user_trips_id)
+                for trip_id in await self.all_user_trips_id:
+                    await self.channel_layer.group_add(f"trip_{trip_id}", self.channel_name)
         if self.user_group and self.user_group.name == "driver":
             await self.channel_layer.group_add(
                 group='driver',

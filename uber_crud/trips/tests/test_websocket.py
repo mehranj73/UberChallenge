@@ -8,6 +8,7 @@ User = get_user_model()
 from rest_framework_simplejwt.tokens import AccessToken
 from channels.db import database_sync_to_async #Db interraction inside async code
 from django.contrib.auth.models import Group
+from trips.models import Trip
 
 
 CHANNEL_LAYERS = {
@@ -28,7 +29,7 @@ CHANNEL_LAYERS = {
     # 7 ) test_can_create_trips : DONE
     # 8 ) test_can_broadcast_trips : DONE
     # 9 ) test_can_join_trip_group : DONE
-    # 10 ) test_driver_can_accept_trip : TODO <-
+    # 10 ) test_driver_can_accept_trip : DONE <-
     # 11 ) test_driver_can_join_trip_group : TODO
 
 PASSWORD = "passw0rd!"
@@ -261,6 +262,7 @@ class TestWebsocket:
          application=application,
          path=f"/trips/?{access}"
         )
+        connected, _ = await communicator.connect()
         message = {
             "type" : "create.trip",
             "data" : {
@@ -286,3 +288,26 @@ class TestWebsocket:
         response = await communicator.receive_json_from()
         print(response)
         assert response["data"]["driver"] == driver_message["data"]["driver"]
+        await communicator.disconnect()
+
+
+    async def test_user_can_join_trip_group_on_connect(self, settings):
+        settings.CHANNEL_LAYERS = CHANNEL_LAYERS
+        channel_layer = get_channel_layer()
+        print("creating trips in test ... ")
+        rider = await database_sync_to_async(create_user)(username="test_rider", group="rider")
+        access = AccessToken.for_user(rider)
+        trip1 = await database_sync_to_async(create_trip)(pickup_address="FIRST PICK UP ", from_user=rider.id)
+        communicator = WebsocketCommunicator(
+         application=application,
+         path=f"/trips/?{access}"
+        )
+        connected, _ = await communicator.connect()
+        message = {
+            "type" : "echo.message",
+            "data" : "You are able to connect ! "
+        }
+        await channel_layer.group_send(f"trip_{trip1.id}", message)
+        response = await communicator.receive_json_from()
+        assert response["data"] == message["data"]
+        await communicator.disconnect()
