@@ -27,8 +27,8 @@ CHANNEL_LAYERS = {
     # 6 ) test_can_join_rider_group : DONE
     # 7 ) test_can_create_trips : DONE
     # 8 ) test_can_broadcast_trips : DONE
-    # 9 ) test_can_join_trip_group : TODO <-
-    # 10 ) test_driver_can_accept_trip : TODO
+    # 9 ) test_can_join_trip_group : DONE
+    # 10 ) test_driver_can_accept_trip : TODO <-
     # 11 ) test_driver_can_join_trip_group : TODO
 
 PASSWORD = "passw0rd!"
@@ -46,6 +46,16 @@ def create_user(
         driver_group.user_set.add(user)
     return user
 
+
+def create_trip(
+    from_user=None,
+    driver=None,
+    pickup_address="RANDOM PICK UP A ",
+    dropoff_address="RANDOM DROP OFF B ! "
+    ):
+    trip = Trip.objects.create(from_user=from_user, driver=driver, pickup_address=pickup_address, dropoff_address=dropoff_address)
+    trip.save()
+    return trip
 
 
 @pytest.mark.asyncio
@@ -204,7 +214,38 @@ class TestWebsocket:
         assert response["data"]["pickup_address"] == message["data"]["pickup_address"]
         assert response["data"]["dropoff_address"] == message["data"]["dropoff_address"]
         await communicator.disconnect()
-         #create trip
-         #broadcast to driver
-         #check if driver received it
-         #yes
+
+
+    async def test_can_join_trip_group(self, settings):
+        settings.CHANNEL_LAYERS = CHANNEL_LAYERS
+        channel_layer = get_channel_layer()
+        print("creating trip ... ")
+        rider = await database_sync_to_async(create_user)(username="test_rider", group="rider")
+        access = AccessToken.for_user(rider)
+        communicator = WebsocketCommunicator(
+         application=application,
+         path=f"/trips/?{access}"
+        )
+        connected, _ = await communicator.connect()
+        #get the trip
+        message = {
+            "type" : "create.trip",
+            "data" : {
+                "from_user" : rider.id,
+                "driver": None,
+                "pickup_address" : "PICK UP A ",
+                "dropoff_address" : "PICK UP B"
+            }
+        }
+        await communicator.send_json_to(message)
+        response = await communicator.receive_json_from()
+        #get the trip id
+        trip_id = response["data"]["id"]
+        message = {
+            "type" : "echo.message",
+            "data" : "You have been added to the trip group !"
+        }
+        await channel_layer.group_send(f"{trip_id}",message)
+        response = await communicator.receive_json_from()
+        assert response["data"] == response["data"]
+        await communicator.disconnect()

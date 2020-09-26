@@ -78,8 +78,8 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
         'NAME': 'UBER',
-        'USER' : 'postgres',
-        'PASSWORD' : 'Valentinleboss2',
+        'USER' : os.environ.get("UBER_DB_USER"),
+        'PASSWORD' : os.environ.get("UBER_DB_PASSWORD"),
         'HOST' : 'localhost',
         'PORT' : '5433'
     }
