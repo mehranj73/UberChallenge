@@ -58,15 +58,11 @@ class TripConsumer(AsyncJsonWebsocketConsumer):
         access = self.scope["query_string"].decode("utf-8")
         self.user = await get_user(access=access)
         self.user_group = await database_sync_to_async(self.user.groups.first)()
-        print("LOOK AT MY GROUP LOOOL ! ")
-        print(self.user_group)
         #TODO : GET ALL RELATED TRIPS FOR A USER
         if self.user_group:
             self.all_user_trips_id = await get_all_trips_id(self.user.id, self.user_group.name)
             if self.all_user_trips_id:
-                print("WE GOT ALL THE TRIPS ID ! ")
-                print(self.all_user_trips_id)
-                for trip_id in await self.all_user_trips_id:
+                for trip_id in self.all_user_trips_id:
                     await self.channel_layer.group_add(f"trip_{trip_id}", self.channel_name)
         if self.user_group and self.user_group.name == "driver":
             await self.channel_layer.group_add(
@@ -91,12 +87,15 @@ class TripConsumer(AsyncJsonWebsocketConsumer):
         trip = await database_sync_to_async(Trip.objects.get)(id=trip_id)
         #TODO : WRITE FUNCTION TO UPDATE !
         serializer = await database_sync_to_async(TripSerializer)(trip, data={
-            "driver" : driver_id
+            "driver" : driver_id,
+            "status" : "ACCEPTED"
         }, partial=True)
         await database_sync_to_async(serializer.is_valid)(raise_exception=True)
         updated_trip = await database_sync_to_async(serializer.save)()
         #END TODO
         serialized_updated_trip = await get_serialized_trip(updated_trip)
+        print("SERIALIZED UPDATED TRIP ! ")
+        print(serialized_updated_trip)
         await self.channel_layer.group_add(f"trip_{trip.id}", self.channel_name)
         print("Successfully accepted the trip")
         await self.echo_message({
@@ -154,6 +153,13 @@ class TripConsumer(AsyncJsonWebsocketConsumer):
             channel=self.channel_name
         )
         print("removing your connection to the test group ! \n")
+        if self.user_group and self.all_user_trips_id:
+            for trip_id in self.all_user_trips_id:
+                await self.channel_layer.group_discard(
+                    group=f"trip_{trip_id}",
+                    channel=self.channel_name
+                )
+                print(f"You have been removed from {trip_id}")
         if self.user_group and self.user_group.name == "driver":
             await self.channel_layer.group_discard(
                 group='driver',

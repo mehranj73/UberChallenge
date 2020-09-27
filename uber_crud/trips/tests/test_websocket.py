@@ -29,8 +29,13 @@ CHANNEL_LAYERS = {
     # 7 ) test_can_create_trips : DONE
     # 8 ) test_can_broadcast_trips : DONE
     # 9 ) test_can_join_trip_group : DONE
-    # 10 ) test_driver_can_accept_trip : DONE <-
-    # 11 ) test_driver_can_join_trip_group : TODO
+    # 10 ) test_driver_can_accept_trip : DONE
+    # 11 ) test_driver_can_join_trip_group : DONE
+    # 12 ) test_rider_can_cancel_trip : TODO
+    # 13 ) test_alert_driver_on_trip_cancel : TODO
+    # 14 ) test_compute_pickup_time : TODO
+    # 14 ) test_compute_dropoff_time : TODO
+    # 15 ) test_driver_pool_select_closest_driver : TODO 
 
 PASSWORD = "passw0rd!"
 
@@ -276,7 +281,7 @@ class TestWebsocket:
         await communicator.send_json_to(message)
         response = await communicator.receive_json_from()
         print(response["data"])
-        print("WE HAVE NO DRIVER ! ")
+        print("WE HAVE NO DRIVER ! LET'S FIND IT ! ")
         driver_message = {
             "type" : "accept.trip",
             "data" : {
@@ -288,6 +293,7 @@ class TestWebsocket:
         response = await communicator.receive_json_from()
         print(response)
         assert response["data"]["driver"] == driver_message["data"]["driver"]
+        assert response["data"]["status"] == "ACCEPTED"
         await communicator.disconnect()
 
 
@@ -297,7 +303,7 @@ class TestWebsocket:
         print("creating trips in test ... ")
         rider = await database_sync_to_async(create_user)(username="test_rider", group="rider")
         access = AccessToken.for_user(rider)
-        trip1 = await database_sync_to_async(create_trip)(pickup_address="FIRST PICK UP ", from_user=rider.id)
+        trip1 = await database_sync_to_async(create_trip)(pickup_address="FIRST PICK UP ", from_user=rider)
         communicator = WebsocketCommunicator(
          application=application,
          path=f"/trips/?{access}"

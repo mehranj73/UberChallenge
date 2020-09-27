@@ -5,7 +5,7 @@ from .models import Trip
 class TripSerializer(serializers.ModelSerializer):
     class Meta:
         model = Trip
-        fields =    ["id","from_user", "driver", "pickup_address", "dropoff_address"]
+        fields =  "__all__"
 
     def create(self, validated_data):
         trip =  Trip.objects.create(**validated_data)
