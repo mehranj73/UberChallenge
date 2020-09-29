@@ -30,15 +30,15 @@ class AccountsTests(APITestCase):
             "password1" : PASSWORD,
             "password2" : PASSWORD,
             "first_name" : "test",
-            "last_name" : "test_man"
+            "last_name" : "test_man",
+            "group" : "RIDER"
         }
         response = self.client.post(url, data, format="json")
-
         #GETTING USER, LAST
         last_user = User.objects.last()
         #ASSERTING
-        print(response)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["group"], data["group"])
         self.assertEqual(response.data["username"], last_user.username)
         self.assertEqual(response.data["first_name"], last_user.first_name)
         self.assertIsNotNone(last_user.password)

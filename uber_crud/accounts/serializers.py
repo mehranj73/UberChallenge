@@ -29,7 +29,7 @@ class CreateUserSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         group, _  = Group.objects.get_or_create(name=validated_data["group"])
         data = {k:v for k,v in validated_data.items() if k not in ["password1", "password2", "group"]}
-        user = User.objects.create_user(**data)
+        user = User.objects.create_user(**data, password=None)
         #password
         user.set_password(validated_data["password1"])
         user.save()
