@@ -1,25 +1,15 @@
 from django.db import models
 from django.contrib.auth.models import (AbstractUser, BaseUserManager)
 from django.contrib.auth.models import Group
+from datetime import datetime
 
 
-# Create your models here.
-
-class UserManager(BaseUserManager):
-
-    def create_user(self, username, password,**kwargs):
-        user = self.model(
-            username=username,
-            **kwargs
-        )
-        user.set_password(password)
-        user.save(using=self._db)
-        return user
-
+def get_user_directory_path(instance, filename):
+        return f"users/{instance.username}-{instance.id}-profile-picture/{datetime.now().strftime('%Y/%H/%M-%H-%M')}/{filename}"
 
 class User(AbstractUser):
-    pass
-    objects = UserManager()
+    profile_picture = models.FileField(upload_to=get_user_directory_path, blank=True, null=True)
+
 
     @property
     def group(self):
