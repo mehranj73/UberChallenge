@@ -43,5 +43,9 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
         token['id'] = user.id
         token["username"] = user.username
-
+        token["first_name"] = user.first_name
+        token["last_name"] = user.last_name
+        user_group = user.groups.first()
+        if user_group:
+             token["user_group"] = user.groups.first().name
         return token
