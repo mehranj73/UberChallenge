@@ -12,6 +12,7 @@ async def get_user(access=None):
         return a user based on token or return an anonymous user
     '''
     if not access:
+        print("not access !")
         return AnonymousUser()
     try:
         access_token = AccessToken(access)
@@ -40,9 +41,10 @@ async def get_serialized_trip(trip_obj):
 
 @database_sync_to_async
 def get_all_trips_id(user_id, group):
+    print(group)
     if group == "rider":
         trips = Trip.objects.filter(from_user=user_id)
-    elif group == "driver":
+    elif group == "DRIVER":
         trips = Trip.objects.filter(driver=user_id)
     return [trip.id for trip in trips]
 
@@ -58,18 +60,22 @@ class TripConsumer(AsyncJsonWebsocketConsumer):
         access = self.scope["query_string"].decode("utf-8")
         self.user = await get_user(access=access)
         self.user_group = await database_sync_to_async(self.user.groups.first)()
+        print(self.user_group)
+        print(self.user.username)
         #TODO : GET ALL RELATED TRIPS FOR A USER
         if self.user_group:
             self.all_user_trips_id = await get_all_trips_id(self.user.id, self.user_group.name)
             if self.all_user_trips_id:
                 for trip_id in self.all_user_trips_id:
                     await self.channel_layer.group_add(f"trip_{trip_id}", self.channel_name)
-        if self.user_group and self.user_group.name == "driver":
+        if self.user_group and self.user_group.name == "DRIVER":
+            print(f"{self.user.username} is joining driver")
             await self.channel_layer.group_add(
                 group='driver',
                 channel=self.channel_name
             )
         elif self.user_group and self.user_group.name == "rider":
+            print(f"{self.user.username} is joining rider")
             await self.channel_layer.group_add(
                 group="rider",
                 channel=self.channel_name
