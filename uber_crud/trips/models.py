@@ -19,8 +19,6 @@ class Trip(models.Model):
     from_user = models.ForeignKey(
         'accounts.User',
         on_delete = models.CASCADE,
-        blank=True,
-        null=True,
         related_name="customer"
     )
 
@@ -54,4 +52,4 @@ class Trip(models.Model):
     accepted_time = models.DateTimeField(blank=True, null=True)
 
     def __str__(self):
-        return f"{self.from_user.username} requested a trip from {self.pickup_address} to {self.dropoff_address}"
+        return f"requested a trip from {self.pickup_address} to {self.dropoff_address}"

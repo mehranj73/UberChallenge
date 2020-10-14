@@ -53,7 +53,6 @@ class TripTests(APITestCase):
         )
         response = self.client.post(reverse("login"), {"username": user.username, "password" : PASSWORD})
         self.access = response.data["access"]
-
     #TODO : REMOVE IT BECAUSE ITS USELESS !
     # def test_can_retrieve_trips_list(self):
     #     trips = [
