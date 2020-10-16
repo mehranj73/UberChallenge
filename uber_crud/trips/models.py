@@ -37,14 +37,10 @@ class Trip(models.Model):
     )
     pickup_address = models.CharField(
         max_length=60,
-        blank=True,
-        default="BASIC PICK UP ADDRESS"
     )
 
     dropoff_address =models.CharField(
         max_length=60,
-        blank=True,
-        default="BASIC DROP OFF ADDRESS"
     )
 
     pickup_time = models.DateTimeField(blank=True, null=True)

@@ -119,6 +119,8 @@ class TripConsumer(AsyncJsonWebsocketConsumer):
     #TODO : FIX TRY EXCEPT BLOCK => UNWANTED MESSAGE SENT
     async def _create_trip(self, message):
         try :
+            message["data"]["status"] = "REQUESTED"
+            print(message)
             trip = await create_trip(message["data"])
             serialized_trip = await get_serialized_trip(trip)
             await self._trip_success({
