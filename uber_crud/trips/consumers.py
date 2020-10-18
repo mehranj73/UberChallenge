@@ -87,6 +87,7 @@ class TripConsumer(AsyncJsonWebsocketConsumer):
         })
 
     async def _accept_trip(self, message):
+        print(message)
         trip_id, driver_id = message["data"]["trip_id"],message["data"]["driver"]
         trip = await database_sync_to_async(Trip.objects.get)(id=trip_id)
         #TODO : WRITE FUNCTION TO UPDATE !
@@ -120,9 +121,9 @@ class TripConsumer(AsyncJsonWebsocketConsumer):
     async def _create_trip(self, message):
         try :
             message["data"]["status"] = "REQUESTED"
-            print(message)
             trip = await create_trip(message["data"])
             serialized_trip = await get_serialized_trip(trip)
+
             await self._trip_success({
                 "type" : "trip.success",
                 "data" : serialized_trip
@@ -131,7 +132,7 @@ class TripConsumer(AsyncJsonWebsocketConsumer):
             await self.channel_layer.group_add(f"trip_{trip.id}", self.channel_name)
             await self.channel_layer.group_send("driver", {
                 "type" : "echo.message",
-                "data" : message["data"]
+                "data" : serialized_trip
             })
 
         except Exception as e:
