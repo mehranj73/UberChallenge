@@ -1,2 +1,2 @@
 # UberChallenge
-Recreating Uber with Django Rest and React
+Backend for Uber
