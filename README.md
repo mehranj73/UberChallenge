@@ -1,2 +1,5 @@
 # UberChallenge
-Backend for Uber
+Uber Clone Backend 
+## Django Rest API 
+## Redis 
+## Postgresql
